@@ -1,10 +1,7 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SEO Content Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 /* ── RESET & BASE ── */
@@ -172,15 +169,15 @@ body {
 
 canvas { display: block; }
 </style>
-</head>
-<body>
+
+
 
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="topbar-left">
     <div class="brand">SEO <em>Dashboard</em></div>
     <div class="divider-v"></div>
-    <div class="page-title">Triển khai & Audit Content</div>
+    <div class="page-title">Triển khai &amp; Audit Content</div>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <div class="month-strip" id="monthStrip">
@@ -373,6 +370,12 @@ function showError(msg) {
 /* ══════════════════════════════════════════
    FILTER DATA
    ══════════════════════════════════════════ */
+function parsePoint(val) {
+  if (!val && val !== 0) return 0;
+  // Đổi dấu , thành . trước khi parseFloat (vd: "0,52" → "0.52")
+  return parseFloat(String(val).replace(',', '.')) || 0;
+}
+
 function normalizeStatus(s) {
   if (!s) return 'todo';
   const v = s.trim().toLowerCase();
@@ -386,9 +389,17 @@ function getFilteredData() {
   const key  = state.task === 'new' ? 'new_content' : 'audit_content';
   const data = rawData[key];
   return data.filter(r => {
-    const projMatch = state.project === 'all' || (r.project||'').toLowerCase() === state.project;
-    const mVal      = (r.time||'').replace('/','/');
-    const monthMatch= mVal.includes('/' + state.month) || mVal.startsWith(state.month);
+    // Match linh hoạt: "ferrolip", "ferrolip.vn", "Ferrolip.vn" đều khớp
+    const proj = (r.project||'').toLowerCase().replace('.vn','').trim();
+    const projMatch = state.project === 'all' || proj === state.project.replace('.vn','');
+    // Match tháng: hỗ trợ "01/2026", "1/2026", "2026-01", "01/26"
+    const t = (r.time||'').trim();
+    const m = state.month; // "01".."12"
+    const monthMatch =
+      t.startsWith(m + '/') ||          // "03/2026"
+      t.startsWith(m.replace(/^0/,'') + '/') || // "3/2026"
+      t.includes('/' + m + '/') ||      // giữa chuỗi
+      t.includes('-' + m);              // "2026-03"
     return projMatch && monthMatch;
   });
 }
@@ -400,7 +411,7 @@ function renderKPI(rows) {
   const total = rows.length;
   const done  = rows.filter(r => normalizeStatus(r.status)==='done').length;
   const doing = rows.filter(r => normalizeStatus(r.status)==='doing').length;
-  const pts   = rows.reduce((s,r) => s + (parseFloat(r.content_point)||0), 0);
+  const pts   = rows.reduce((s,r) => s + parsePoint(r.content_point), 0);
   const pct   = total > 0 ? Math.round(done/total*100) : 0;
 
   document.getElementById('k-total').textContent = total;
@@ -409,7 +420,7 @@ function renderKPI(rows) {
   document.getElementById('k-done-sub').innerHTML = `còn <b>${total-done}</b> chưa xong`;
   document.getElementById('k-doing').textContent = doing;
   document.getElementById('k-doing-sub').innerHTML = `<b>${rows.filter(r=>normalizeStatus(r.status)==='todo').length}</b> chưa bắt đầu`;
-  document.getElementById('k-pts').textContent = pts.toFixed(0);
+  document.getElementById('k-pts').textContent = pts.toFixed(2);
   document.getElementById('k-pts-sub').innerHTML = `TB <b>${total>0?(pts/total).toFixed(2):0}</b> điểm/bài`;
 }
 
@@ -439,7 +450,7 @@ function renderTable(rows) {
           <td><span style="font-weight:500">${r.nhan_su||''}</span></td>
           <td><span class="badge badge-${projColor(proj)}">${r.content_type||''}</span></td>
           <td><span class="pill pill-${st}"><span class="pill-dot"></span>${statusLabel[st]}</span></td>
-          <td style="text-align:right;font-weight:600;color:${st==='done'?'var(--done)':'var(--muted)'}">${parseFloat(r.content_point||0).toFixed(0)}</td>
+          <td style="text-align:right;font-weight:600;color:${st==='done'?'var(--done)':'var(--muted)'}">${parsePoint(r.content_point).toFixed(2)}</td>
         </tr>`;
         else return `<tr>
           <td style="max-width:200px;font-size:12px;color:#2563eb;font-weight:500">${r.URL||''}</td>
@@ -447,7 +458,7 @@ function renderTable(rows) {
           <td style="color:var(--muted);white-space:nowrap">${r.time||''}</td>
           <td><span style="font-weight:500">${r.nhan_su||''}</span></td>
           <td><span class="pill pill-${st}"><span class="pill-dot"></span>${statusLabel[st]}</span></td>
-          <td style="text-align:right;font-weight:600;color:${st==='done'?'var(--done)':'var(--muted)'}">${parseFloat(r.content_point||0).toFixed(0)}</td>
+          <td style="text-align:right;font-weight:600;color:${st==='done'?'var(--done)':'var(--muted)'}">${parsePoint(r.content_point).toFixed(2)}</td>
         </tr>`;
       }).join('');
 }
@@ -461,7 +472,7 @@ function renderStaff(rows) {
     const n = r.nhan_su||'?';
     if (!map[n]) map[n] = { done:0, total:0, pts:0 };
     map[n].total++;
-    map[n].pts += parseFloat(r.content_point||0);
+    map[n].pts += parsePoint(r.content_point);
     if (normalizeStatus(r.status)==='done') map[n].done++;
   });
   const staffArr = Object.entries(map).sort((a,b)=>b[1].pts-a[1].pts);
@@ -480,7 +491,7 @@ function renderStaff(rows) {
           <div class="staff-name">${name}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${projColor}"></div></div>
           <div class="staff-meta">
-            <span class="staff-pts">${d.pts.toFixed(0)} đ</span>
+            <span class="staff-pts">${d.pts.toFixed(2)} đ</span>
             <span class="staff-count">${d.done}/${d.total} bài</span>
           </div>
         </div>`;
@@ -540,7 +551,7 @@ function buildPointChart(rows) {
   const map = {};
   rows.forEach(r => {
     const n = r.nhan_su||'?';
-    map[n] = (map[n]||0) + (parseFloat(r.content_point)||0);
+    map[n] = (map[n]||0) + parsePoint(r.content_point);
   });
   const sorted  = Object.entries(map).sort((a,b)=>b[1]-a[1]);
   const labels  = sorted.map(([n])=>n);
@@ -619,5 +630,3 @@ async function init() {
 
 init();
 </script>
-</body>
-</html>
